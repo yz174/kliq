@@ -112,9 +112,35 @@ export function MessageList({
                 {messages.map((msg, idx) => {
                     const prevMsg = idx > 0 ? messages[idx - 1] : null;
                     const showDivider = shouldShowDateDivider(msg, prevMsg);
+
+                    // ── System stamp ──
+                    if (msg.type === "system") {
+                        return (
+                            <div key={msg._id}>
+                                {showDivider && (
+                                    <div className="flex items-center gap-3 px-4 py-3">
+                                        <div className="flex-1 h-px bg-white/5" />
+                                        <span className="text-xs text-muted-foreground bg-[var(--chat-bg)] px-2 py-0.5 rounded-full border border-white/5">
+                                            {formatDateDivider(msg.createdAt)}
+                                        </span>
+                                        <div className="flex-1 h-px bg-white/5" />
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3 px-4 py-1.5 my-0.5">
+                                    <div className="flex-1 h-px bg-white/5" />
+                                    <span className="text-[11px] text-muted-foreground bg-white/[0.04] border border-white/8 px-3 py-1 rounded-full select-none">
+                                        {msg.content}
+                                    </span>
+                                    <div className="flex-1 h-px bg-white/5" />
+                                </div>
+                            </div>
+                        );
+                    }
+
                     // Show avatar if first message or different sender than previous
                     const showAvatar =
-                        !prevMsg || prevMsg.senderId !== msg.senderId || showDivider;
+                        !prevMsg || prevMsg.senderId !== msg.senderId || showDivider ||
+                        prevMsg.type === "system";
 
                     return (
                         <div key={msg._id}>
