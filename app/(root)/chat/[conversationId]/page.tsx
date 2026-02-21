@@ -67,6 +67,7 @@ export default function ChatPage() {
         _id: Id<"users">;
         name: string;
         imageUrl?: string;
+        email?: string;
     }>;
 
     const isGroup = conversation.type === "group";
@@ -87,6 +88,8 @@ export default function ChatPage() {
                 isGroup={isGroup}
                 memberCount={isGroup ? members.length : undefined}
                 conversationId={conversationId as Id<"conversations">}
+                members={members}
+                currentUserId={meData._id as Id<"users">}
             />
 
             <MessageList
