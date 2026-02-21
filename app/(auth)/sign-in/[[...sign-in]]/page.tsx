@@ -1,18 +1,37 @@
 import { SignIn } from "@clerk/nextjs";
 import Image from "next/image";
+import DotGrid from "@/components/DotGrid";
 
 export default function SignInPage() {
     return (
-        <div className="flex h-screen items-center justify-center bg-[oklch(0.11_0_0)]">
-            <div className="flex flex-col items-center gap-6">
-                <Image
-                    src="/logo.png"
-                    alt="Kliq"
-                    width={80}
-                    height={32}
-                    priority
-                    className="select-none object-contain mix-blend-screen"
+        <div className="relative h-screen w-full bg-[oklch(0.11_0_0)] overflow-hidden">
+            {/* Animated dot grid background — wrapped so it never competes in flex layout */}
+            <div className="absolute inset-0 z-0">
+                <DotGrid
+                    dotSize={4}
+                    gap={28}
+                    baseColor="#1e1e2e"
+                    activeColor="#0ea5e9"
+                    proximity={180}
+                    shockRadius={220}
+                    shockStrength={4}
+                    resistance={800}
+                    returnDuration={1.2}
+                    className="w-full h-full"
                 />
+            </div>
+
+            {/* Sign-in card — centred over the grid */}
+            <div className="relative z-10 flex h-full items-center justify-center">
+                <div className="flex flex-col items-center gap-6">
+                    <Image
+                        src="/logo.png"
+                        alt="Kliq"
+                        width={80}
+                        height={32}
+                        priority
+                        className="select-none object-contain mix-blend-screen"
+                    />
                 <SignIn
                     appearance={{
                         variables: {
@@ -61,6 +80,7 @@ export default function SignInPage() {
                         },
                     }}
                 />
+                </div>
             </div>
         </div>
     );
