@@ -80,12 +80,12 @@ export function Sidebar({ currentUserId }: SidebarProps) {
     const dmConversations = conversations?.filter((c) => c?.type === "dm") ?? [];
     const groupConversations = conversations?.filter((c) => c?.type === "group") ?? [];
 
-    const filterAndSearchConvs = <T extends NonNullable<typeof dmConversations[number]>>(convs: T[]) =>
-        convs.filter((c) => {
+    const filterAndSearchConvs = <T extends NonNullable<typeof dmConversations[number]> | null>(convs: T[]) =>
+        convs.filter((c): c is NonNullable<T> => {
             if (!c) return false;
-            const name = getConvDisplayName(c);
+            const name = getConvDisplayName(c as NonNullable<T>);
             const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
-            const matchesUnread = activeTab === "unread" ? (c.unreadCount ?? 0) > 0 : true;
+            const matchesUnread = activeTab === "unread" ? ((c as NonNullable<T>).unreadCount ?? 0) > 0 : true;
             return matchesSearch && matchesUnread;
         });
 
@@ -270,32 +270,79 @@ export function Sidebar({ currentUserId }: SidebarProps) {
                                 </>
                             )}
 
-                            {/* Empty State */}
+                            {/* Empty State — no conversations at all */}
                             {conversations.length === 0 && (
-                                <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5">
-                                        <MessageSquarePlus className="h-7 w-7 text-muted-foreground" />
+                                <div className="flex flex-col items-center justify-center gap-4 px-4 py-12 text-center">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                                        <MessageSquarePlus className="h-7 w-7 text-primary/60" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium">No conversations yet</p>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            Start by messaging someone
+                                            Start chatting with someone!
                                         </p>
                                     </div>
+                                    <Button
+                                        size="sm"
+                                        className="gap-2 bg-primary hover:bg-primary/90 btn-primary-glow text-xs"
+                                        onClick={() => setUserSearchOpen(true)}
+                                    >
+                                        <MessageSquarePlus className="h-3.5 w-3.5" />
+                                        Start a New Chat
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Empty State — groups tab but no groups yet */}
+                            {activeTab === "groups" && conversations.length > 0 && filteredGroups.length === 0 && !search && (
+                                <div className="flex flex-col items-center justify-center gap-4 px-4 py-12 text-center">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                                        <Users className="h-7 w-7 text-primary/60" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">No groups yet</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Create a group to chat with multiple people
+                                        </p>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        className="gap-2 bg-primary hover:bg-primary/90 btn-primary-glow text-xs"
+                                        onClick={() => setGroupDialogOpen(true)}
+                                    >
+                                        <Users className="h-3.5 w-3.5" />
+                                        New Group
+                                    </Button>
                                 </div>
                             )}
 
                             {/* No search results */}
                             {conversations.length > 0 && search && filteredDMs.length === 0 && filteredGroups.length === 0 && (
-                                <div className="py-8 text-center text-sm text-muted-foreground">
-                                    No results for &ldquo;{search}&rdquo;
+                                <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5">
+                                        <Search className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">No results</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Nothing matched &ldquo;{search}&rdquo;
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
                             {/* No unread */}
                             {activeTab === "unread" && tabCounts.unread === 0 && (
-                                <div className="py-8 text-center text-sm text-muted-foreground">
-                                    No unread messages
+                                <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5">
+                                        <MessageSquarePlus className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">All caught up!</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            No unread messages right now
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </>
