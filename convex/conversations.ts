@@ -194,6 +194,107 @@ export const getConversationById = query({
     },
 });
 
+// Add a member to a group conversation
+export const addGroupMember = mutation({
+    args: {
+        conversationId: v.id("conversations"),
+        userId: v.id("users"),
+        addedByUserId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const conversation = await ctx.db.get(args.conversationId);
+        if (!conversation || conversation.type !== "group") {
+            throw new Error("Not a group conversation");
+        }
+
+        const existing = await ctx.db
+            .query("conversationMembers")
+            .withIndex("by_conversationId_userId", (q) =>
+                q
+                    .eq("conversationId", args.conversationId)
+                    .eq("userId", args.userId)
+            )
+            .unique();
+
+        if (existing) throw new Error("User is already a member");
+
+        await ctx.db.insert("conversationMembers", {
+            conversationId: args.conversationId,
+            userId: args.userId,
+        });
+
+        // System stamp
+        const addedBy = await ctx.db.get(args.addedByUserId);
+        const added = await ctx.db.get(args.userId);
+        const now = Date.now();
+        const msgId = await ctx.db.insert("messages", {
+            conversationId: args.conversationId,
+            senderId: args.addedByUserId,
+            content: `${addedBy?.name ?? "Someone"} added ${added?.name ?? "someone"} to the group`,
+            isDeleted: false,
+            type: "system",
+            createdAt: now,
+        });
+        await ctx.db.patch(args.conversationId, { lastMessageId: msgId, lastMessageTime: now });
+    },
+});
+
+// Leave a group conversation
+export const leaveGroup = mutation({
+    args: {
+        conversationId: v.id("conversations"),
+        userId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const membership = await ctx.db
+            .query("conversationMembers")
+            .withIndex("by_conversationId_userId", (q) =>
+                q
+                    .eq("conversationId", args.conversationId)
+                    .eq("userId", args.userId)
+            )
+            .unique();
+
+        if (!membership) throw new Error("Not a member of this group");
+
+        // System stamp before deleting membership
+        const leavingUser = await ctx.db.get(args.userId);
+        const now = Date.now();
+        const msgId = await ctx.db.insert("messages", {
+            conversationId: args.conversationId,
+            senderId: args.userId,
+            content: `${leavingUser?.name ?? "Someone"} left the group`,
+            isDeleted: false,
+            type: "system",
+            createdAt: now,
+        });
+        await ctx.db.patch(args.conversationId, { lastMessageId: msgId, lastMessageTime: now });
+
+        await ctx.db.delete(membership._id);
+
+        // If no members remain, delete the conversation and its messages
+        const remaining = await ctx.db
+            .query("conversationMembers")
+            .withIndex("by_conversationId", (q) =>
+                q.eq("conversationId", args.conversationId)
+            )
+            .collect();
+
+        if (remaining.length === 0) {
+            const messages = await ctx.db
+                .query("messages")
+                .withIndex("by_conversationId", (q) =>
+                    q.eq("conversationId", args.conversationId)
+                )
+                .collect();
+            for (const msg of messages) {
+                await ctx.db.delete(msg._id);
+            }
+            await ctx.db.delete(args.conversationId);
+        }
+    },
+});
+
 // Mark conversation as read
 export const markAsRead = mutation({
     args: {

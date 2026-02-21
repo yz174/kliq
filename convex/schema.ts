@@ -33,6 +33,7 @@ export default defineSchema({
     senderId: v.id("users"),
     content: v.string(),
     isDeleted: v.boolean(),
+    type: v.optional(v.union(v.literal("user"), v.literal("system"))),
     createdAt: v.number(),
   })
     .index("by_conversationId", ["conversationId"])
