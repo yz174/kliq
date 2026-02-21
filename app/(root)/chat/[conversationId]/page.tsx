@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -13,6 +14,20 @@ import { usePresenceForUsers } from "@/hooks/usePresence";
 export default function ChatPage() {
     const { conversationId } = useParams<{ conversationId: string }>();
     const { user } = useUser();
+    const router = useRouter();
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                // Don't fire if user is typing in an input/textarea
+                const tag = (e.target as HTMLElement).tagName;
+                if (tag === "INPUT" || tag === "TEXTAREA") return;
+                router.push("/");
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [router]);
 
     const meData = useQuery(
         api.users.getMe,
