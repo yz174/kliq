@@ -96,7 +96,7 @@ export function MessageBubble({
                     )}
                 >
                     <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-muted/30 border border-white/5">
-                        <span className="text-muted-foreground text-sm">🚫</span>
+                        <span className="text-muted-foreground text-sm">    </span>
                         <span className="text-sm italic text-muted-foreground">
                             This message was deleted
                         </span>

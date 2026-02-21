@@ -1,14 +1,19 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Smile, Send, Plus } from "lucide-react";
+import { Smile, Send } from "lucide-react";
 import { useTyping } from "@/hooks/useTyping";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import type { EmojiClickData } from "emoji-picker-react";
+
+// Lazy-load the heavy picker so it doesn't bloat the initial bundle
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 interface MessageInputProps {
     conversationId: Id<"conversations">;
@@ -22,6 +27,7 @@ export function MessageInput({
     const [content, setContent] = useState("");
     const [sending, setSending] = useState(false);
     const [error, setError] = useState(false);
+    const [emojiOpen, setEmojiOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const sendMessage = useMutation(api.messages.sendMessage);
     const { handleTypingStart, handleTypingStop } = useTyping(
@@ -71,7 +77,6 @@ export function MessageInput({
         setContent(e.target.value);
         handleTypingStart();
 
-        // Auto-resize textarea
         const ta = textareaRef.current;
         if (ta) {
             ta.style.height = "auto";
@@ -79,8 +84,43 @@ export function MessageInput({
         }
     };
 
+    const handleEmojiClick = (emojiData: EmojiClickData) => {
+        const ta = textareaRef.current;
+        const emoji = emojiData.emoji;
+        if (ta) {
+            const start = ta.selectionStart ?? content.length;
+            const end = ta.selectionEnd ?? content.length;
+            const newContent = content.slice(0, start) + emoji + content.slice(end);
+            setContent(newContent);
+            // Restore cursor after the inserted emoji
+            requestAnimationFrame(() => {
+                ta.focus();
+                ta.selectionStart = ta.selectionEnd = start + emoji.length;
+                ta.style.height = "auto";
+                ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
+            });
+        } else {
+            setContent((prev) => prev + emoji);
+        }
+        setEmojiOpen(false);
+    };
+
     return (
         <div className="px-4 pb-4 pt-2">
+            {/* Emoji Picker */}
+            {emojiOpen && (
+                <div className="mb-2 flex justify-end">
+                    <EmojiPicker
+                        onEmojiClick={handleEmojiClick}
+                        theme={"dark" as never}
+                        skinTonesDisabled
+                        searchPlaceholder="Search emoji..."
+                        height={380}
+                        width={320}
+                    />
+                </div>
+            )}
+
             <div
                 className={cn(
                     "flex items-end gap-2 rounded-2xl border bg-[oklch(0.18_0_0)] px-3 py-2",
@@ -88,14 +128,6 @@ export function MessageInput({
                     "focus-within:border-primary/50 transition-colors"
                 )}
             >
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
-                >
-                    <Plus className="h-4 w-4" />
-                </Button>
-
                 <textarea
                     ref={textareaRef}
                     value={content}
@@ -109,7 +141,14 @@ export function MessageInput({
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+                    type="button"
+                    onClick={() => setEmojiOpen((o) => !o)}
+                    className={cn(
+                        "h-8 w-8 shrink-0 transition-colors",
+                        emojiOpen
+                            ? "text-primary"
+                            : "text-muted-foreground hover:text-primary"
+                    )}
                 >
                     <Smile className="h-4 w-4" />
                 </Button>
