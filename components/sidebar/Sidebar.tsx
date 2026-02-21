@@ -108,7 +108,7 @@ export function Sidebar({ currentUserId }: SidebarProps) {
 
     return (
         <>
-            <aside className="flex h-full w-96 shrink-0 flex-col bg-[var(--sidebar-bg)] border-r border-white/5">
+            <aside className="flex h-full w-full md:w-96 shrink-0 flex-col bg-[var(--sidebar-bg)] border-r border-white/5">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-4 border-b border-white/5">
                     <div className="flex items-center gap-2">
