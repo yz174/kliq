@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { usePathname } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -18,8 +18,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, MessageSquarePlus, Users, Settings, ChevronDown, Lock } from "lucide-react";
+import { Search, MessageSquarePlus, Users, Settings, ChevronDown, Lock, LogOut, UserCog } from "lucide-react";
 import Image from "next/image";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { usePresenceForUsers } from "@/hooks/usePresence";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,7 @@ type FilterTab = "all" | "unread" | "groups";
 export function Sidebar({ currentUserId }: SidebarProps) {
     const pathname = usePathname();
     const { user } = useUser();
+    const clerk = useClerk();
     const [search, setSearch] = useState("");
     const [activeTab, setActiveTab] = useState<FilterTab>("all");
     const [userSearchOpen, setUserSearchOpen] = useState(false);
@@ -113,8 +115,8 @@ export function Sidebar({ currentUserId }: SidebarProps) {
                         <Image
                             src="/logo.png"
                             alt="Kliq logo"
-                            width={80}
-                            height={32}
+                            width={48}
+                            height={20}
                             priority
                             className="select-none object-contain mix-blend-screen"
                         />
@@ -124,11 +126,12 @@ export function Sidebar({ currentUserId }: SidebarProps) {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
-                                className="flex-1 ml-3 gap-2 bg-primary hover:bg-primary/90 text-sm btn-primary-glow"
+                                size="sm"
+                                className="gap-1.5 px-3 bg-primary hover:bg-primary/90 text-xs btn-primary-glow"
                             >
-                                <MessageSquarePlus className="h-4 w-4" />
+                                <MessageSquarePlus className="h-3.5 w-3.5" />
                                 New Chat
-                                <ChevronDown className="h-3 w-3 ml-auto opacity-70" />
+                                <ChevronDown className="h-3 w-3 opacity-70" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
@@ -303,7 +306,12 @@ export function Sidebar({ currentUserId }: SidebarProps) {
                 <div className="border-t border-white/5 px-4 py-3 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <UserButton afterSignOutUrl="/sign-in" />
+                            <UserAvatar
+                                src={user?.imageUrl}
+                                name={user?.fullName ?? user?.username ?? ""}
+                                size="sm"
+                                isOnline
+                            />
                             <div className="min-w-0">
                                 <p className="text-sm font-medium truncate">
                                     {user?.fullName ?? user?.username}
@@ -311,9 +319,33 @@ export function Sidebar({ currentUserId }: SidebarProps) {
                                 <p className="text-xs text-[var(--online-green)]">Online</p>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                            <Settings className="h-4 w-4 text-muted-foreground" />
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                    <Settings className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                side="top"
+                                align="end"
+                                className="bg-[oklch(0.18_0_0)] border-white/10 w-44 mb-1"
+                            >
+                                <DropdownMenuItem
+                                    onClick={() => clerk.openUserProfile()}
+                                    className="gap-2 cursor-pointer"
+                                >
+                                    <UserCog className="h-4 w-4" />
+                                    Manage account
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => clerk.signOut({ redirectUrl: "/sign-in" })}
+                                    className="gap-2 cursor-pointer text-red-400 focus:text-red-400"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Sign out
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                     {/* Encrypted notice */}
                     <p className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
