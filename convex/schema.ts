@@ -47,7 +47,7 @@ export default defineSchema({
 
   aiArtifacts: defineTable({
     conversationId: v.id("conversations"),
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
     type: v.string(),
     content: v.string(),
     metadata: v.optional(v.any()),

@@ -32,16 +32,36 @@ export const sendMessage = mutation({
             messageId,
         });
 
-        // 2. If user typed an AI command, run the corresponding AI worker
+        // 2. Regular messages can still be checked for inline commands (legacy path)
         const command = detectAICommand(args.content);
         if (command) {
             await ctx.scheduler.runAfter(0, internal.ai.workers.runCommand, {
                 conversationId: args.conversationId,
+                userId: args.senderId,
                 command,
             });
         }
 
         return messageId;
+    },
+});
+
+/**
+ * Trigger an AI command without inserting a message.
+ * Called by the client when user sends a slash-command — keeps chat history clean.
+ */
+export const triggerAICommand = mutation({
+    args: {
+        conversationId: v.id("conversations"),
+        userId: v.id("users"),
+        command: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.scheduler.runAfter(0, internal.ai.workers.runCommand, {
+            conversationId: args.conversationId,
+            userId: args.userId,
+            command: args.command,
+        });
     },
 });
 
@@ -134,6 +154,7 @@ export const getRecentForAI = internalQuery({
                 .map(async (m) => {
                     const sender = await ctx.db.get(m.senderId);
                     return {
+                        senderId: m.senderId as string,
                         content: m.content,
                         senderName: sender?.name ?? "Unknown",
                         createdAt: m.createdAt,
