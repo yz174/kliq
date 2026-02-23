@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { usePathname } from "next/navigation";
@@ -36,12 +37,14 @@ export default function AppLayout({
     if (!isLoaded || (user && meData === undefined)) {
         return (
             <div className="flex h-screen items-center justify-center bg-[var(--chat-bg)]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/20">
-                        <span className="text-2xl font-bold text-primary">k</span>
-                    </div>
-                    <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                </div>
+                <Image
+                    src="/logo.png"
+                    alt="Kliq"
+                    width={72}
+                    height={72}
+                    className="animate-bounce rounded-2xl"
+                    priority
+                />
             </div>
         );
     }

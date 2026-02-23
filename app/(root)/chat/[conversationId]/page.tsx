@@ -68,13 +68,21 @@ export default function ChatPage() {
     // ── Skeleton pending state ──────────────────────────────────────────────
     const [pendingCommands, setPendingCommands] = useState<Set<string>>(new Set());
     const pendingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+    // ── Dismissed blocks (moved to info panel) ─────────────────────────────
+    const [dismissedBlocks, setDismissedBlocks] = useState<Set<string>>(new Set());
 
     const handleCommandTriggered = useCallback((cmd: string) => {
+        // Re-triggering a command brings its block back inline
+        setDismissedBlocks((prev) => { const n = new Set(prev); n.delete(cmd); return n; });
         setPendingCommands((prev) => new Set([...prev, cmd]));
         if (pendingTimersRef.current[cmd]) clearTimeout(pendingTimersRef.current[cmd]);
         pendingTimersRef.current[cmd] = setTimeout(() => {
             setPendingCommands((prev) => { const n = new Set(prev); n.delete(cmd); return n; });
         }, 30_000);
+    }, []);
+
+    const handleDismiss = useCallback((cmd: string) => {
+        setDismissedBlocks((prev) => new Set([...prev, cmd]));
     }, []);
 
     // Clear pending as soon as the real artifact arrives / updates
@@ -128,14 +136,24 @@ export default function ChatPage() {
                 conversationId={conversationId as Id<"conversations">}
                 members={members}
                 currentUserId={meData._id as Id<"users">}
+                dismissedSummary={dismissedBlocks.has("summary") ? summary : null}
+                dismissedActionItems={dismissedBlocks.has("actions") ? actionItems : null}
             />
 
-            {/* AI Blocks — rendered between header and messages */}
-            {(summary || pendingCommands.has("summary")) && (
-                <AISummaryCard artifact={summary} loading={!summary && pendingCommands.has("summary")} />
+            {/* AI Blocks — rendered between header and messages, hidden when dismissed */}
+            {(summary || pendingCommands.has("summary")) && !dismissedBlocks.has("summary") && (
+                <AISummaryCard
+                    artifact={summary}
+                    loading={pendingCommands.has("summary")}
+                    onDismiss={() => handleDismiss("summary")}
+                />
             )}
-            {(actionItems || pendingCommands.has("actions")) && (
-                <ActionItemsPanel artifact={actionItems} loading={!actionItems && pendingCommands.has("actions")} />
+            {(actionItems || pendingCommands.has("actions")) && !dismissedBlocks.has("actions") && (
+                <ActionItemsPanel
+                    artifact={actionItems}
+                    loading={pendingCommands.has("actions")}
+                    onDismiss={() => handleDismiss("actions")}
+                />
             )}
 
             <MessageList
