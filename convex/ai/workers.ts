@@ -44,16 +44,19 @@ export const runCommand = internalAction({
     const { conversationId, userId, command } = args;
 
     // ── Cooldown check (per user — each user has independent cooldowns) ──────
-    const existing = await ctx.runQuery(internal.ai.artifacts.getLatestByType, {
-      conversationId,
-      userId,
-      type: command,
-    });
-    if (existing && Date.now() - existing.createdAt < COOLDOWN_MS) {
-      console.log(
-        `[workers.runCommand] Cooldown active for "${command}" user ${userId}`
-      );
-      return;
+    // /reply is exempt: always regenerate based on the latest messages.
+    if (command !== "reply") {
+      const existing = await ctx.runQuery(internal.ai.artifacts.getLatestByType, {
+        conversationId,
+        userId,
+        type: command,
+      });
+      if (existing && Date.now() - existing.createdAt < COOLDOWN_MS) {
+        console.log(
+          `[workers.runCommand] Cooldown active for "${command}" user ${userId}`
+        );
+        return;
+      }
     }
 
     // ── Retrieve context ────────────────────────────────────────────────────
