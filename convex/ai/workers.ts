@@ -14,6 +14,7 @@ const COOLDOWN_MS = 15 * 60 * 1000;
 export const insertArtifact = internalMutation({
   args: {
     conversationId: v.id("conversations"),
+    userId: v.id("users"),
     type: v.string(),
     content: v.string(),
     metadata: v.optional(v.any()),
@@ -21,6 +22,7 @@ export const insertArtifact = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.insert("aiArtifacts", {
       conversationId: args.conversationId,
+      userId: args.userId,
       type: args.type,
       content: args.content,
       metadata: args.metadata,
@@ -35,25 +37,34 @@ export const insertArtifact = internalMutation({
 export const runCommand = internalAction({
   args: {
     conversationId: v.id("conversations"),
+    userId: v.id("users"),
     command: v.string(),
   },
   handler: async (ctx, args) => {
-    const { conversationId, command } = args;
+    const { conversationId, userId, command } = args;
 
-    // ── Cooldown check ──────────────────────────────────────────────────────
+    // ── Cooldown check (per user — each user has independent cooldowns) ──────
     const existing = await ctx.runQuery(internal.ai.artifacts.getLatestByType, {
       conversationId,
+      userId,
       type: command,
     });
     if (existing && Date.now() - existing.createdAt < COOLDOWN_MS) {
       console.log(
-        `[workers.runCommand] Cooldown active for "${command}" in ${conversationId}`
+        `[workers.runCommand] Cooldown active for "${command}" user ${userId}`
       );
       return;
     }
 
     // ── Retrieve context ────────────────────────────────────────────────────
-    const context = await retrieveRelevantMessages(ctx, conversationId);
+    // For /reply: only use messages from OTHER participants so suggestions are
+    // based on what the other person said, not the requester's own words.
+    // For /summarize and /action-items: use the full conversation.
+    const context = await retrieveRelevantMessages(
+      ctx,
+      conversationId,
+      command === "reply" ? userId : undefined
+    );
     if (context.length === 0) return;
 
     // ── Build prompt + call LLM ─────────────────────────────────────────────
@@ -66,9 +77,10 @@ export const runCommand = internalAction({
       return;
     }
 
-    // ── Store artifact ──────────────────────────────────────────────────────
+    // ── Store artifact (scoped to this user) ───────────────────────────────
     await ctx.runMutation(internal.ai.workers.insertArtifact, {
       conversationId,
+      userId,
       type: command,
       content: result.trim(),
       metadata: { messageCount: context.length },
