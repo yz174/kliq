@@ -107,7 +107,7 @@ export function MessageList({
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto py-4 flex flex-col"
+                className="h-full overflow-y-auto pt-4 pb-6 flex flex-col"
             >
                 {messages.map((msg, idx) => {
                     const prevMsg = idx > 0 ? messages[idx - 1] : null;

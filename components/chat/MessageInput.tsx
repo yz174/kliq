@@ -206,7 +206,7 @@ export function MessageInput({
     };
 
     return (
-        <div className="px-4 pb-4 pt-2">
+        <div className="border-t border-white/[0.08] px-4 pb-4 pt-2">
             {/* Smart Reply Chips */}
             <SmartReplies
                 replies={smartReplies}
