@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
@@ -65,6 +65,34 @@ export default function ChatPage() {
         meData?._id as Id<"users"> | undefined
     );
 
+    // ── Skeleton pending state ──────────────────────────────────────────────
+    const [pendingCommands, setPendingCommands] = useState<Set<string>>(new Set());
+    const pendingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+    const handleCommandTriggered = useCallback((cmd: string) => {
+        setPendingCommands((prev) => new Set([...prev, cmd]));
+        if (pendingTimersRef.current[cmd]) clearTimeout(pendingTimersRef.current[cmd]);
+        pendingTimersRef.current[cmd] = setTimeout(() => {
+            setPendingCommands((prev) => { const n = new Set(prev); n.delete(cmd); return n; });
+        }, 30_000);
+    }, []);
+
+    // Clear pending as soon as the real artifact arrives / updates
+    useEffect(() => {
+        if (summary) setPendingCommands((prev) => { const n = new Set(prev); n.delete("summary"); return n; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [summary?._id, summary?.createdAt]);
+
+    useEffect(() => {
+        if (actionItems) setPendingCommands((prev) => { const n = new Set(prev); n.delete("actions"); return n; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [actionItems?._id, actionItems?.createdAt]);
+
+    useEffect(() => {
+        if (smartReplies.length > 0) setPendingCommands((prev) => { const n = new Set(prev); n.delete("reply"); return n; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [smartReplies[0]]);
+
     if (!meData || !conversation) {
         return (
             <div className="flex flex-1 items-center justify-center">
@@ -103,8 +131,12 @@ export default function ChatPage() {
             />
 
             {/* AI Blocks — rendered between header and messages */}
-            {summary && <AISummaryCard artifact={summary} />}
-            {actionItems && <ActionItemsPanel artifact={actionItems} />}
+            {(summary || pendingCommands.has("summary")) && (
+                <AISummaryCard artifact={summary} loading={!summary && pendingCommands.has("summary")} />
+            )}
+            {(actionItems || pendingCommands.has("actions")) && (
+                <ActionItemsPanel artifact={actionItems} loading={!actionItems && pendingCommands.has("actions")} />
+            )}
 
             <MessageList
                 conversationId={conversationId as Id<"conversations">}
@@ -115,6 +147,8 @@ export default function ChatPage() {
                 conversationId={conversationId as Id<"conversations">}
                 currentUserId={meData._id as Id<"users">}
                 smartReplies={smartReplies}
+                smartRepliesLoading={pendingCommands.has("reply")}
+                onCommandTriggered={handleCommandTriggered}
             />
         </div>
     );
