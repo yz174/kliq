@@ -1,11 +1,12 @@
 # Kliq
 
-A real-time chat application built with Next.js, Convex, and Clerk. Kliq supports direct messages, group conversations, emoji reactions, typing indicators, and online presence — all with a sleek dark UI and smooth mobile-responsive layout.
+A real-time chat application built with Next.js, Convex, and Clerk. Kliq supports direct messages, group conversations, emoji reactions, typing indicators, online presence, and an AI conversation intelligence layer — all with a sleek dark UI and smooth mobile-responsive layout.
 
 ---
 
 ## Features
 
+### Messaging
 - **Authentication** — Sign up / sign in via Clerk (email + OAuth)
 - **Direct Messages** — Start a DM with any user; get-or-create semantics prevent duplicate conversations
 - **Group Chats** — Create groups with multiple members and a custom name
@@ -22,6 +23,16 @@ A real-time chat application built with Next.js, Convex, and Clerk. Kliq support
 - **Mobile Responsive** — Full-width sidebar on mobile with smooth slide animation when opening a chat
 - **Dark Theme** — Consistent dark theme across the app and all Clerk modals
 
+### AI Conversation Intelligence
+- **Slash Command Palette** — Type `/` in the message input to open a keyboard-navigable command palette (↑ ↓ Enter, Tab to pre-fill, Esc to close). Commands are never sent as chat messages.
+- **`/summarize`** — Generates a collapsible AI summary card (violet) between the header and messages. Cached per user with a 15-minute cooldown.
+- **`/action-items`** — Extracts tasks and decisions into a checkable amber action-items panel. Also cached with a 15-minute cooldown.
+- **`/reply`** — Suggests 3 contextual reply chips (sky blue) above the input, based on the *other* person's most recent messages. No cooldown — always regenerates fresh on each invocation.
+- **Per-user privacy** — All AI artifacts are scoped to the user who triggered the command. User A's summary is never visible to User B.
+- **Skeleton loading** — The summary card, action-items panel, and reply chips all show animated skeleton placeholders immediately after a command is triggered, while the AI is processing. Re-triggering `/reply` skeleton-loads over stale chips.
+- **Message Embeddings** — Every sent message is embedded asynchronously using `text-embedding-004` (768 dimensions) and stored in a Convex native vector index, powering semantic search.
+- **Semantic Search** — `semanticSearch` action embeds a query and retrieves the most relevant messages by cosine similarity via the vector index.
+
 ---
 
 ## Tech Stack
@@ -32,6 +43,8 @@ A real-time chat application built with Next.js, Convex, and Clerk. Kliq support
 | Language | TypeScript |
 | Backend / Realtime | [Convex](https://convex.dev) |
 | Authentication | [Clerk](https://clerk.com) |
+| AI / LLM | [Google Gemini](https://ai.google.dev) (`gemini-2.5-flash`) |
+| Embeddings | Google `text-embedding-004` (768-dim, via Convex vector index) |
 | Styling | [Tailwind CSS v4](https://tailwindcss.com) |
 | UI Components | [Radix UI](https://www.radix-ui.com) + [shadcn/ui](https://ui.shadcn.com) |
 | Icons | [Lucide React](https://lucide.dev) |
@@ -58,10 +71,13 @@ kliq/
 |
 +-- components/
 |   +-- chat/
+|   |   +-- AISummaryCard.tsx         # Collapsible violet AI summary card (with skeleton)
+|   |   +-- ActionItemsPanel.tsx      # Checkable amber action-items list (with skeleton)
 |   |   +-- ChatHeader.tsx            # Header with info panel, add/leave member
 |   |   +-- MessageBubble.tsx         # Individual message with reactions and delete
-|   |   +-- MessageInput.tsx          # Compose area with emoji picker
+|   |   +-- MessageInput.tsx          # Compose area with emoji picker + AI command palette
 |   |   +-- MessageList.tsx           # Scrollable message list with system stamps
+|   |   +-- SmartReplies.tsx          # Sky-blue reply chip row (with skeleton)
 |   |   +-- TypingIndicator.tsx       # Animated typing indicator
 |   +-- dialogs/
 |   |   +-- NewGroupDialog.tsx        # Create group dialog
@@ -75,16 +91,29 @@ kliq/
 |   +-- ui/                           # shadcn/ui primitives (button, input, dialog, etc.)
 |
 +-- convex/                           # Convex backend (serverless functions + schema)
-|   +-- schema.ts                     # Database schema
+|   +-- schema.ts                     # DB schema (messages w/ vector index, aiArtifacts)
 |   +-- conversations.ts              # DM/group CRUD, markAsRead, addMember, leaveGroup
-|   +-- messages.ts                   # Send, fetch, soft-delete messages
+|   +-- messages.ts                   # Send, fetch, soft-delete; triggerAICommand mutation
 |   +-- reactions.ts                  # Toggle emoji reactions
 |   +-- presence.ts                   # Online / offline tracking
 |   +-- typing.ts                     # Typing indicator state
 |   +-- users.ts                      # User upsert and lookup
+|   +-- ai/
+|   |   +-- artifacts.ts              # getArtifacts (public) + getLatestByType (internal)
+|   |   +-- commands.ts               # detectAICommand() — pure slash-command parser
+|   |   +-- embeddings.ts             # generate internalAction + patchEmbedding mutation
+|   |   +-- prompts.ts                # buildPrompt() — LLM prompt templates per command
+|   |   +-- retrieval.ts              # retrieveRelevantMessages() — context for LLM
+|   |   +-- workers.ts                # runCommand internalAction — main AI worker
+|   +-- search/
+|   |   +-- semanticSearch.ts         # semanticSearch action (embed query → vector search)
+|   |   +-- similarity.ts             # cosineSimilarity() + rankByCosine() utilities
+|   +-- services/
+|   |   +-- llm.ts                    # callGemini() + createEmbedding() — only AI I/O file
 |   +-- _generated/                   # Auto-generated Convex types (do not edit)
 |
 +-- hooks/
+|   +-- useAIArtifacts.ts             # Realtime subscription to AI artifacts (per user)
 |   +-- usePresence.ts                # Subscribe to online status for users
 |   +-- useTyping.ts                  # Manage typing state for current user
 |   +-- useUserSync.ts                # Sync Clerk user to Convex on sign-in
@@ -137,6 +166,14 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
 # Convex (auto-populated by npx convex dev)
 NEXT_PUBLIC_CONVEX_URL=https://...convex.cloud
 ```
+
+> **Note:** The Gemini API key must be set as a Convex environment variable (not `.env.local`), because it is read inside Convex actions:
+>
+> ```bash
+> npx convex env set GEMINI_API_KEY your_key_here
+> ```
+>
+> Get a key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ### 3. Initialize Convex
 
