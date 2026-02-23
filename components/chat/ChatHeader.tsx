@@ -14,8 +14,9 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Info, LogOut, Search, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Info, LogOut, Search, Sparkles, ListTodo, UserPlus, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
+import type { AIArtifact } from "@/hooks/useAIArtifacts";
 
 interface Member {
     _id: Id<"users">;
@@ -33,6 +34,8 @@ interface ChatHeaderProps {
     conversationId: Id<"conversations">;
     members?: Member[];
     currentUserId?: Id<"users">;
+    dismissedSummary?: AIArtifact | null;
+    dismissedActionItems?: AIArtifact | null;
 }
 
 export function ChatHeader({
@@ -44,6 +47,8 @@ export function ChatHeader({
     conversationId,
     members = [],
     currentUserId,
+    dismissedSummary,
+    dismissedActionItems,
 }: ChatHeaderProps) {
     const router = useRouter();
     const { user: clerkUser } = useUser();
@@ -53,6 +58,8 @@ export function ChatHeader({
     const [showAddMember, setShowAddMember] = useState(false);
     const [addSearch, setAddSearch] = useState("");
     const [adding, setAdding] = useState<Id<"users"> | null>(null);
+    const [summaryExpanded, setSummaryExpanded] = useState(true);
+    const [actionsExpanded, setActionsExpanded] = useState(true);
 
     const leaveGroupMutation = useMutation(api.conversations.leaveGroup);
     const addGroupMemberMutation = useMutation(api.conversations.addGroupMember);
@@ -174,6 +181,58 @@ export function ChatHeader({
                             </SheetHeader>
 
                             <div className="flex-1 overflow-y-auto">
+
+                                {/* ── AI Insights (dismissed blocks) ── */}
+                                {(dismissedSummary || dismissedActionItems) && (
+                                    <div className="px-4 pt-3 pb-2 space-y-2">
+                                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+                                            AI Insights
+                                        </p>
+                                        {dismissedSummary && (
+                                            <div className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+                                                <button
+                                                    onClick={() => setSummaryExpanded((p) => !p)}
+                                                    className="flex w-full items-center gap-2 px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                                                >
+                                                    <Sparkles className="h-3 w-3 shrink-0 text-violet-400" />
+                                                    <span className="flex-1 text-xs font-medium text-violet-300 text-left">AI Summary</span>
+                                                    {summaryExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                </button>
+                                                {summaryExpanded && (
+                                                    <p className="px-3 pb-3 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                                                        {dismissedSummary.content}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                        {dismissedActionItems && (
+                                            <div className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+                                                <button
+                                                    onClick={() => setActionsExpanded((p) => !p)}
+                                                    className="flex w-full items-center gap-2 px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                                                >
+                                                    <ListTodo className="h-3 w-3 shrink-0 text-amber-400" />
+                                                    <span className="flex-1 text-xs font-medium text-amber-300 text-left">Action Items</span>
+                                                    {actionsExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                </button>
+                                                {actionsExpanded && (
+                                                    <ul className="px-3 pb-3 space-y-1">
+                                                        {dismissedActionItems.content
+                                                            .split("\n")
+                                                            .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+                                                            .filter((l) => l.length > 0 && !l.endsWith(":"))
+                                                            .map((item, i) => (
+                                                                <li key={i} className="flex items-start gap-2">
+                                                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400/60 shrink-0" />
+                                                                    <span className="text-xs text-muted-foreground">{item}</span>
+                                                                </li>
+                                                            ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* ── Add People Card ── */}
                                 <div className="px-4 pt-3 pb-2">
@@ -342,6 +401,57 @@ export function ChatHeader({
                             </SheetHeader>
 
                             <div className="px-5 py-4 flex flex-col gap-4">
+                                {/* AI Insights (dismissed blocks) */}
+                                {(dismissedSummary || dismissedActionItems) && (
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                                            AI Insights
+                                        </p>
+                                        {dismissedSummary && (
+                                            <div className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+                                                <button
+                                                    onClick={() => setSummaryExpanded((p) => !p)}
+                                                    className="flex w-full items-center gap-2 px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                                                >
+                                                    <Sparkles className="h-3 w-3 shrink-0 text-violet-400" />
+                                                    <span className="flex-1 text-xs font-medium text-violet-300 text-left">AI Summary</span>
+                                                    {summaryExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                </button>
+                                                {summaryExpanded && (
+                                                    <p className="px-3 pb-3 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                                                        {dismissedSummary.content}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                        {dismissedActionItems && (
+                                            <div className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+                                                <button
+                                                    onClick={() => setActionsExpanded((p) => !p)}
+                                                    className="flex w-full items-center gap-2 px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                                                >
+                                                    <ListTodo className="h-3 w-3 shrink-0 text-amber-400" />
+                                                    <span className="flex-1 text-xs font-medium text-amber-300 text-left">Action Items</span>
+                                                    {actionsExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                </button>
+                                                {actionsExpanded && (
+                                                    <ul className="px-3 pb-3 space-y-1">
+                                                        {dismissedActionItems.content
+                                                            .split("\n")
+                                                            .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+                                                            .filter((l) => l.length > 0 && !l.endsWith(":"))
+                                                            .map((item, i) => (
+                                                                <li key={i} className="flex items-start gap-2">
+                                                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400/60 shrink-0" />
+                                                                    <span className="text-xs text-muted-foreground">{item}</span>
+                                                                </li>
+                                                            ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div>
                                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                                         Email

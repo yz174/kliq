@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
 import { SkeletonMessage } from "@/components/shared/SkeletonLoader";
-import { Button } from "@/components/ui/button";
-import { ArrowDown, MessageSquare } from "lucide-react";
+import { MessageSquare, ChevronDown } from "lucide-react";
 import {
     shouldShowDateDivider,
     formatDateDivider,
 } from "@/lib/formatDate";
-import { useMutation } from "convex/react";
 
 interface MessageListProps {
     conversationId: Id<"conversations">;
@@ -35,11 +33,13 @@ export function MessageList({
     const bottomRef = useRef<HTMLDivElement>(null);
     const [isAtBottom, setIsAtBottom] = useState(true);
     const [hasNewMessages, setHasNewMessages] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const prevMessageCount = useRef(0);
 
     const scrollToBottom = useCallback((smooth = true) => {
         bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
         setHasNewMessages(false);
+        setUnreadCount(0);
     }, []);
 
     // Track scroll position
@@ -48,7 +48,10 @@ export function MessageList({
         if (!el) return;
         const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
         setIsAtBottom(distFromBottom < 80);
-        if (distFromBottom < 80) setHasNewMessages(false);
+        if (distFromBottom < 80) {
+            setHasNewMessages(false);
+            setUnreadCount(0);
+        }
     }, []);
 
     // Auto-scroll on new messages
@@ -65,6 +68,7 @@ export function MessageList({
                     scrollToBottom(true);
                 } else {
                     setHasNewMessages(true);
+                    setUnreadCount((c) => c + (newCount - prevMessageCount.current));
                 }
             }
         }
@@ -181,17 +185,21 @@ export function MessageList({
                 <div ref={bottomRef} />
             </div>
 
-            {/* New messages button */}
-            {hasNewMessages && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                    <Button
+            {/* Jump-to-bottom button — visible whenever user is scrolled up, WhatsApp style */}
+            {!isAtBottom && (
+                <div className="absolute bottom-4 right-4">
+                    <button
                         onClick={() => scrollToBottom(true)}
-                        size="sm"
-                        className="gap-2 rounded-full bg-primary shadow-lg btn-primary-glow"
+                        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[oklch(0.22_0_0)] border border-white/10 shadow-lg transition-all hover:bg-[oklch(0.26_0_0)] hover:border-white/20 active:scale-95"
+                        aria-label="Jump to latest message"
                     >
-                        <ArrowDown className="h-4 w-4" />
-                        New messages
-                    </Button>
+                        <ChevronDown className="h-4 w-4 text-foreground/80" />
+                        {hasNewMessages && unreadCount > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground leading-none">
+                                {unreadCount > 99 ? "99+" : unreadCount}
+                            </span>
+                        )}
+                    </button>
                 </div>
             )}
         </div>

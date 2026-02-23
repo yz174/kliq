@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles, X } from "lucide-react";
 import type { AIArtifact } from "@/hooks/useAIArtifacts";
 
 interface AISummaryCardProps {
   artifact?: AIArtifact | null;
   loading?: boolean;
+  onDismiss?: () => void;
 }
 
-export function AISummaryCard({ artifact, loading }: AISummaryCardProps) {
+export function AISummaryCard({ artifact, loading, onDismiss }: AISummaryCardProps) {
   const [expanded, setExpanded] = useState(true);
 
   const timeAgo = artifact ? formatTimeAgo(artifact.createdAt) : "";
@@ -17,25 +18,36 @@ export function AISummaryCard({ artifact, loading }: AISummaryCardProps) {
   return (
     <div className="mx-4 mb-2 rounded-xl border border-white/10 bg-white/[0.04] overflow-hidden">
       {/* Header */}
-      <button
-        onClick={() => setExpanded((p) => !p)}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
-      >
-        <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-400" />
-        <span className="flex-1 text-xs font-medium text-violet-300">
-          AI Summary
-        </span>
-        {loading && !artifact ? (
-          <span className="h-2 w-12 rounded bg-white/10 animate-pulse inline-block" />
-        ) : (
-          <span className="text-[10px] text-muted-foreground">{timeAgo}</span>
+      <div className="flex w-full items-center gap-2 px-3 py-2.5">
+        <button
+          onClick={() => setExpanded((p) => !p)}
+          className="flex flex-1 items-center gap-2 text-left transition-colors hover:opacity-80"
+        >
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+          <span className="flex-1 text-xs font-medium text-violet-300">
+            AI Summary
+          </span>
+          {loading && !artifact ? (
+            <span className="h-2 w-12 rounded bg-white/10 animate-pulse inline-block" />
+          ) : (
+            <span className="text-[10px] text-muted-foreground">{timeAgo}</span>
+          )}
+          {expanded ? (
+            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+        </button>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="ml-1 shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-white/[0.06]"
+            aria-label="Dismiss summary"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         )}
-        {expanded ? (
-          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-        )}
-      </button>
+      </div>
 
       {/* Body */}
       {expanded && (
