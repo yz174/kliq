@@ -8,14 +8,8 @@ export interface MessageContext {
   createdAt: number;
 }
 
-/**
- * Fetches recent conversation messages and returns them as a lightweight
- * context array for LLM prompt injection.
- *
- * Phase 1: Returns the 40 most recent non-deleted, non-system messages.
- * Phase 2 upgrade: Replace with vectorSearch for semantic retrieval once
- * all message embeddings are populated.
- */
+// Fetches recent conversation messages and returns them as a lightweight
+ 
 export async function retrieveRelevantMessages(
   ctx: ActionCtx,
   conversationId: Id<"conversations">

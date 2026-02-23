@@ -3,10 +3,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createEmbedding } from "../services/llm";
 
-/**
- * Patch a message record with its generated embedding vector.
- * Called by the `generate` action — actions cannot write to DB directly.
- */
+// Patch a message record with its generated embedding vector.
+ 
 export const patchEmbedding = internalMutation({
   args: {
     messageId: v.id("messages"),
@@ -17,10 +15,8 @@ export const patchEmbedding = internalMutation({
   },
 });
 
-/**
- * Async job: generate a 768-dim embedding for a message and store it.
- * Scheduled by sendMessage after every successful insert.
- */
+// Async job: generate a 768-dim embedding for a message and store it.
+ 
 export const generate = internalAction({
   args: { messageId: v.id("messages") },
   handler: async (ctx, args) => {

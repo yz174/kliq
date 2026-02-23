@@ -9,10 +9,8 @@ import { callGemini } from "../services/llm";
 /** 15-minute cooldown in milliseconds */
 const COOLDOWN_MS = 15 * 60 * 1000;
 
-/**
- * Insert an AI artifact into the database.
- * Actions cannot write to DB directly — they delegate to this internal mutation.
- */
+// Insert an AI artifact into the database
+ 
 export const insertArtifact = internalMutation({
   args: {
     conversationId: v.id("conversations"),
@@ -33,13 +31,6 @@ export const insertArtifact = internalMutation({
 
 /**
  * Main AI worker. Runs asynchronously after a /command is detected in sendMessage.
- *
- * Flow:
- * 1. Cooldown check — skip if same command ran within 15 min
- * 2. Retrieve context (up to 40 recent messages)
- * 3. Build prompt
- * 4. Call Gemini
- * 5. Store artifact → triggers realtime UI update
  */
 export const runCommand = internalAction({
   args: {
