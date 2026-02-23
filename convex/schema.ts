@@ -35,9 +35,25 @@ export default defineSchema({
     isDeleted: v.boolean(),
     type: v.optional(v.union(v.literal("user"), v.literal("system"))),
     createdAt: v.number(),
+    embedding: v.optional(v.array(v.float64())),
   })
     .index("by_conversationId", ["conversationId"])
-    .index("by_conversationId_createdAt", ["conversationId", "createdAt"]),
+    .index("by_conversationId_createdAt", ["conversationId", "createdAt"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 768,
+      filterFields: ["conversationId"],
+    }),
+
+  aiArtifacts: defineTable({
+    conversationId: v.id("conversations"),
+    type: v.string(),
+    content: v.string(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_conversation_type", ["conversationId", "type"]),
 
   reactions: defineTable({
     messageId: v.id("messages"),
