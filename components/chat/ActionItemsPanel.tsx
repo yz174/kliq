@@ -5,18 +5,21 @@ import { CheckSquare, Square, ChevronDown, ChevronUp, ListTodo } from "lucide-re
 import type { AIArtifact } from "@/hooks/useAIArtifacts";
 
 interface ActionItemsPanelProps {
-  artifact: AIArtifact;
+  artifact?: AIArtifact | null;
+  loading?: boolean;
 }
 
-export function ActionItemsPanel({ artifact }: ActionItemsPanelProps) {
+export function ActionItemsPanel({ artifact, loading }: ActionItemsPanelProps) {
   const [expanded, setExpanded] = useState(true);
   const [checked, setChecked] = useState<Set<number>>(new Set());
 
   // Parse numbered list from AI output
-  const items = artifact.content
-    .split("\n")
-    .map((line) => line.replace(/^\d+\.\s*/, "").trim())
-    .filter(Boolean);
+  const items = artifact
+    ? artifact.content
+        .split("\n")
+        .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+        .filter(Boolean)
+    : [];
 
   const toggle = (idx: number) =>
     setChecked((prev) => {
@@ -29,7 +32,7 @@ export function ActionItemsPanel({ artifact }: ActionItemsPanelProps) {
       return next;
     });
 
-  if (items.length === 0 || artifact.content.toLowerCase().includes("no action items")) {
+  if (!loading && (items.length === 0 || (artifact && artifact.content.toLowerCase().includes("no action items")))) {
     return null;
   }
 
@@ -43,9 +46,11 @@ export function ActionItemsPanel({ artifact }: ActionItemsPanelProps) {
         <ListTodo className="h-3.5 w-3.5 shrink-0 text-amber-400" />
         <span className="flex-1 text-xs font-medium text-amber-300">
           Action Items
-          <span className="ml-1.5 text-[10px] text-muted-foreground">
-            ({items.length - checked.size} remaining)
-          </span>
+          {artifact && (
+            <span className="ml-1.5 text-[10px] text-muted-foreground">
+              ({items.length - checked.size} remaining)
+            </span>
+          )}
         </span>
         {expanded ? (
           <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -57,29 +62,38 @@ export function ActionItemsPanel({ artifact }: ActionItemsPanelProps) {
       {/* Items */}
       {expanded && (
         <ul className="px-3 pb-3 pt-0 space-y-1.5">
-          {items.map((item, idx) => (
-            <li key={idx} className="flex items-start gap-2">
-              <button
-                onClick={() => toggle(idx)}
-                className="mt-0.5 shrink-0 transition-opacity hover:opacity-80"
-              >
-                {checked.has(idx) ? (
-                  <CheckSquare className="h-3.5 w-3.5 text-amber-400" />
-                ) : (
-                  <Square className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-              </button>
-              <span
-                className={
-                  checked.has(idx)
-                    ? "text-xs text-muted-foreground line-through"
-                    : "text-xs text-foreground/80"
-                }
-              >
-                {item}
-              </span>
-            </li>
-          ))}
+          {loading && !artifact ? (
+            [72, 90, 60].map((w, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <div className="h-3.5 w-3.5 mt-0.5 shrink-0 rounded bg-white/10 animate-pulse" />
+                <div className="h-2.5 rounded bg-white/10 animate-pulse" style={{ width: `${w}%` }} />
+              </li>
+            ))
+          ) : (
+            items.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <button
+                  onClick={() => toggle(idx)}
+                  className="mt-0.5 shrink-0 transition-opacity hover:opacity-80"
+                >
+                  {checked.has(idx) ? (
+                    <CheckSquare className="h-3.5 w-3.5 text-amber-400" />
+                  ) : (
+                    <Square className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </button>
+                <span
+                  className={
+                    checked.has(idx)
+                      ? "text-xs text-muted-foreground line-through"
+                      : "text-xs text-foreground/80"
+                  }
+                >
+                  {item}
+                </span>
+              </li>
+            ))
+          )}
         </ul>
       )}
     </div>

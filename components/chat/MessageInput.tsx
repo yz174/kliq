@@ -44,12 +44,16 @@ interface MessageInputProps {
     conversationId: Id<"conversations">;
     currentUserId: Id<"users">;
     smartReplies?: string[];
+    smartRepliesLoading?: boolean;
+    onCommandTriggered?: (command: string) => void;
 }
 
 export function MessageInput({
     conversationId,
     currentUserId,
     smartReplies = [],
+    smartRepliesLoading = false,
+    onCommandTriggered,
 }: MessageInputProps) {
     const [content, setContent] = useState("");
     const [sending, setSending] = useState(false);
@@ -96,14 +100,14 @@ export function MessageInput({
 
             try {
                 await triggerAICommand({ conversationId, userId: currentUserId, command });
-                toast.success("AI is working on it…", { duration: 2000 });
+                onCommandTriggered?.(command);
             } catch {
                 toast.error("Failed to run command. Try again.");
             } finally {
                 setSending(false);
             }
         },
-        [conversationId, currentUserId, triggerAICommand, handleTypingStop]
+        [conversationId, currentUserId, triggerAICommand, handleTypingStop, onCommandTriggered]
     );
 
     const handleSend = useCallback(async () => {
@@ -206,6 +210,7 @@ export function MessageInput({
             {/* Smart Reply Chips */}
             <SmartReplies
                 replies={smartReplies}
+                loading={smartRepliesLoading}
                 onSelect={(reply) => {
                     setContent(reply);
                     textareaRef.current?.focus();
