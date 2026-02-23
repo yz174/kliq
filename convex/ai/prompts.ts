@@ -46,13 +46,14 @@ Summary:`;
       return `${BASE_INSTRUCTION}
 
 Below is the recent conversation history. Extract all action items, tasks, and decisions mentioned.
-Format them as a numbered list. Only include concrete, actionable items — skip casual chit-chat.
-If no action items exist, respond with "No action items found."
+Format them as a plain numbered list with NO introductory header line — start directly with "1."
+Only include concrete, actionable items — skip casual chit-chat.
+If no action items exist, respond with only the text: No action items found.
 
 Conversation:
 ${log}
 
-Action Items:`;
+Output:`;
 
     case "reply":
       return `${BASE_INSTRUCTION}

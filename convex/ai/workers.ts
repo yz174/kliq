@@ -44,8 +44,8 @@ export const runCommand = internalAction({
     const { conversationId, userId, command } = args;
 
     // ── Cooldown check (per user — each user has independent cooldowns) ──────
-    // /reply is exempt: always regenerate based on the latest messages.
-    if (command !== "reply") {
+    // /reply and /action-items are exempt: always regenerate fresh results.
+    if (command !== "reply" && command !== "actions") {
       const existing = await ctx.runQuery(internal.ai.artifacts.getLatestByType, {
         conversationId,
         userId,
