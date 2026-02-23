@@ -23,11 +23,15 @@ export interface AIArtifactsState {
 //Returns the latest artifact of each type, parsed and ready to render.
  
 export function useAIArtifacts(
-  conversationId: Id<"conversations">
+  conversationId: Id<"conversations">,
+  currentUserId: Id<"users"> | null | undefined
 ): AIArtifactsState {
-  const artifacts = useQuery(api.ai.artifacts.getArtifacts, {
-    conversationId,
-  });
+  const artifacts = useQuery(
+    api.ai.artifacts.getArtifacts,
+    currentUserId
+      ? { conversationId, userId: currentUserId }
+      : "skip"
+  );
 
   if (artifacts === undefined) {
     return { summary: null, actionItems: null, smartReplies: [], isLoading: true };
