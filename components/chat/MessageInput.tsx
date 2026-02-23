@@ -1,20 +1,44 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Smile, Send } from "lucide-react";
+import { Smile, Send, Sparkles, ListTodo, MessageSquarePlus } from "lucide-react";
 import { useTyping } from "@/hooks/useTyping";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { EmojiClickData } from "emoji-picker-react";
 import { SmartReplies } from "./SmartReplies";
 
-// Lazy-load the heavy picker so it doesn't bloat the initial bundle
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
+
+// ── Command palette definitions ─────────────────────────────────────────────
+const AI_COMMANDS = [
+    {
+        name: "/summarize",
+        command: "summary",
+        description: "Summarize recent conversation",
+        icon: Sparkles,
+        color: "text-violet-400",
+    },
+    {
+        name: "/action-items",
+        command: "actions",
+        description: "Extract tasks & decisions",
+        icon: ListTodo,
+        color: "text-amber-400",
+    },
+    {
+        name: "/reply",
+        command: "reply",
+        description: "Suggest contextual replies",
+        icon: MessageSquarePlus,
+        color: "text-sky-400",
+    },
+] as const;
 
 interface MessageInputProps {
     conversationId: Id<"conversations">;
@@ -31,45 +55,115 @@ export function MessageInput({
     const [sending, setSending] = useState(false);
     const [error, setError] = useState(false);
     const [emojiOpen, setEmojiOpen] = useState(false);
+    const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+    const [selectedCommandIdx, setSelectedCommandIdx] = useState(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const paletteRef = useRef<HTMLDivElement>(null);
+
     const sendMessage = useMutation(api.messages.sendMessage);
+    const triggerAICommand = useMutation(api.messages.triggerAICommand);
     const { handleTypingStart, handleTypingStop } = useTyping(
         conversationId,
         currentUserId
+    );
+
+    // Filter commands based on what's typed after "/"
+    const filteredCommands = content.startsWith("/")
+        ? AI_COMMANDS.filter((c) =>
+              c.name.startsWith(content.trim().toLowerCase())
+          )
+        : [];
+
+    // Open/close palette
+    useEffect(() => {
+        if (content.startsWith("/") && filteredCommands.length > 0) {
+            setCommandPaletteOpen(true);
+            setSelectedCommandIdx(0);
+        } else {
+            setCommandPaletteOpen(false);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [content]);
+
+    const execCommand = useCallback(
+        async (command: string) => {
+            setSending(true);
+            setError(false);
+            handleTypingStop();
+            setContent("");
+            setCommandPaletteOpen(false);
+            if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+            try {
+                await triggerAICommand({ conversationId, command });
+                toast.success("AI is working on it…", { duration: 2000 });
+            } catch {
+                toast.error("Failed to run command. Try again.");
+            } finally {
+                setSending(false);
+            }
+        },
+        [conversationId, triggerAICommand, handleTypingStop]
     );
 
     const handleSend = useCallback(async () => {
         const text = content.trim();
         if (!text || sending) return;
 
+        // If it's a slash-command, run it without sending a message
+        const matched = AI_COMMANDS.find((c) => c.name === text.split(" ")[0]);
+        if (matched) {
+            await execCommand(matched.command);
+            return;
+        }
+
         setSending(true);
         setError(false);
         handleTypingStop();
 
         try {
-            await sendMessage({
-                conversationId,
-                senderId: currentUserId,
-                content: text,
-            });
+            await sendMessage({ conversationId, senderId: currentUserId, content: text });
             setContent("");
-            if (textareaRef.current) {
-                textareaRef.current.style.height = "auto";
-            }
+            if (textareaRef.current) textareaRef.current.style.height = "auto";
         } catch {
             setError(true);
             toast.error("Failed to send message", {
-                action: {
-                    label: "Retry",
-                    onClick: handleSend,
-                },
+                action: { label: "Retry", onClick: handleSend },
             });
         } finally {
             setSending(false);
         }
-    }, [content, sending, conversationId, currentUserId, sendMessage, handleTypingStop]);
+    }, [content, sending, conversationId, currentUserId, sendMessage, handleTypingStop, execCommand]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (commandPaletteOpen) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSelectedCommandIdx((i) => (i + 1) % filteredCommands.length);
+                return;
+            }
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSelectedCommandIdx((i) => (i - 1 + filteredCommands.length) % filteredCommands.length);
+                return;
+            }
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                execCommand(filteredCommands[selectedCommandIdx].command);
+                return;
+            }
+            if (e.key === "Escape") {
+                e.preventDefault();
+                setCommandPaletteOpen(false);
+                return;
+            }
+            if (e.key === "Tab") {
+                e.preventDefault();
+                setContent(filteredCommands[selectedCommandIdx].name + " ");
+                return;
+            }
+        }
+
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -78,7 +172,7 @@ export function MessageInput({
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setContent(e.target.value);
-        handleTypingStart();
+        if (!e.target.value.startsWith("/")) handleTypingStart();
 
         const ta = textareaRef.current;
         if (ta) {
@@ -95,7 +189,6 @@ export function MessageInput({
             const end = ta.selectionEnd ?? content.length;
             const newContent = content.slice(0, start) + emoji + content.slice(end);
             setContent(newContent);
-            // Restore cursor after the inserted emoji
             requestAnimationFrame(() => {
                 ta.focus();
                 ta.selectionStart = ta.selectionEnd = start + emoji.length;
@@ -118,6 +211,54 @@ export function MessageInput({
                     textareaRef.current?.focus();
                 }}
             />
+
+            {/* Command Palette */}
+            {commandPaletteOpen && filteredCommands.length > 0 && (
+                <div
+                    ref={paletteRef}
+                    className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[oklch(0.16_0_0)] shadow-xl"
+                >
+                    <div className="border-b border-white/5 px-3 py-1.5">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            AI Commands
+                        </span>
+                    </div>
+                    {filteredCommands.map((cmd, idx) => {
+                        const Icon = cmd.icon;
+                        return (
+                            <button
+                                key={cmd.name}
+                                onMouseDown={(e) => {
+                                    e.preventDefault(); // prevent textarea blur
+                                    execCommand(cmd.command);
+                                }}
+                                onMouseEnter={() => setSelectedCommandIdx(idx)}
+                                className={cn(
+                                    "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                                    idx === selectedCommandIdx
+                                        ? "bg-white/[0.06]"
+                                        : "hover:bg-white/[0.03]"
+                                )}
+                            >
+                                <Icon className={cn("h-4 w-4 shrink-0", cmd.color)} />
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-medium text-foreground">
+                                        {cmd.name}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                        {cmd.description}
+                                    </span>
+                                </div>
+                                {idx === selectedCommandIdx && (
+                                    <span className="ml-auto text-[10px] text-muted-foreground">
+                                        Enter ↵
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Emoji Picker */}
             {emojiOpen && (
@@ -145,7 +286,7 @@ export function MessageInput({
                     value={content}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a message..."
+                    placeholder="Type a message or / for AI commands…"
                     rows={1}
                     className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none min-h-[32px] max-h-[120px] py-1"
                 />
@@ -157,9 +298,7 @@ export function MessageInput({
                     onClick={() => setEmojiOpen((o) => !o)}
                     className={cn(
                         "h-8 w-8 shrink-0 transition-colors",
-                        emojiOpen
-                            ? "text-primary"
-                            : "text-muted-foreground hover:text-primary"
+                        emojiOpen ? "text-primary" : "text-muted-foreground hover:text-primary"
                     )}
                 >
                     <Smile className="h-4 w-4" />
