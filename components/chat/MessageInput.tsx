@@ -95,7 +95,7 @@ export function MessageInput({
             if (textareaRef.current) textareaRef.current.style.height = "auto";
 
             try {
-                await triggerAICommand({ conversationId, command });
+                await triggerAICommand({ conversationId, userId: currentUserId, command });
                 toast.success("AI is working on it…", { duration: 2000 });
             } catch {
                 toast.error("Failed to run command. Try again.");
@@ -103,7 +103,7 @@ export function MessageInput({
                 setSending(false);
             }
         },
-        [conversationId, triggerAICommand, handleTypingStop]
+        [conversationId, currentUserId, triggerAICommand, handleTypingStop]
     );
 
     const handleSend = useCallback(async () => {

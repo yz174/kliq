@@ -59,8 +59,10 @@ export default function ChatPage() {
     const partnerIsOnline = presenceList?.[0]?.isOnline ?? false;
 
     // AI artifacts — subscribes in real-time, renders AI blocks when ready
+    // meData may still be loading; hook handles null safely via "skip"
     const { summary, actionItems, smartReplies } = useAIArtifacts(
-        conversationId as Id<"conversations">
+        conversationId as Id<"conversations">,
+        meData?._id as Id<"users"> | undefined
     );
 
     if (!meData || !conversation) {
