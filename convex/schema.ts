@@ -47,13 +47,14 @@ export default defineSchema({
 
   aiArtifacts: defineTable({
     conversationId: v.id("conversations"),
+    userId: v.id("users"),
     type: v.string(),
     content: v.string(),
     metadata: v.optional(v.any()),
     createdAt: v.number(),
   })
-    .index("by_conversation", ["conversationId"])
-    .index("by_conversation_type", ["conversationId", "type"]),
+    .index("by_conversation_user", ["conversationId", "userId"])
+    .index("by_conversation_user_type", ["conversationId", "userId", "type"]),
 
   reactions: defineTable({
     messageId: v.id("messages"),
