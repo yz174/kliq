@@ -11,6 +11,7 @@ import { useTyping } from "@/hooks/useTyping";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { EmojiClickData } from "emoji-picker-react";
+import { SmartReplies } from "./SmartReplies";
 
 // Lazy-load the heavy picker so it doesn't bloat the initial bundle
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
@@ -18,11 +19,13 @@ const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 interface MessageInputProps {
     conversationId: Id<"conversations">;
     currentUserId: Id<"users">;
+    smartReplies?: string[];
 }
 
 export function MessageInput({
     conversationId,
     currentUserId,
+    smartReplies = [],
 }: MessageInputProps) {
     const [content, setContent] = useState("");
     const [sending, setSending] = useState(false);
@@ -107,6 +110,15 @@ export function MessageInput({
 
     return (
         <div className="px-4 pb-4 pt-2">
+            {/* Smart Reply Chips */}
+            <SmartReplies
+                replies={smartReplies}
+                onSelect={(reply) => {
+                    setContent(reply);
+                    textareaRef.current?.focus();
+                }}
+            />
+
             {/* Emoji Picker */}
             {emojiOpen && (
                 <div className="mb-2 flex justify-end">

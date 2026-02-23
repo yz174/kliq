@@ -9,7 +9,10 @@ import { Id } from "@/convex/_generated/dataModel";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { MessageList } from "@/components/chat/MessageList";
 import { MessageInput } from "@/components/chat/MessageInput";
+import { AISummaryCard } from "@/components/chat/AISummaryCard";
+import { ActionItemsPanel } from "@/components/chat/ActionItemsPanel";
 import { usePresenceForUsers } from "@/hooks/usePresence";
+import { useAIArtifacts } from "@/hooks/useAIArtifacts";
 
 export default function ChatPage() {
     const { conversationId } = useParams<{ conversationId: string }>();
@@ -55,6 +58,11 @@ export default function ChatPage() {
     const presenceList = usePresenceForUsers(partnerIds);
     const partnerIsOnline = presenceList?.[0]?.isOnline ?? false;
 
+    // AI artifacts — subscribes in real-time, renders AI blocks when ready
+    const { summary, actionItems, smartReplies } = useAIArtifacts(
+        conversationId as Id<"conversations">
+    );
+
     if (!meData || !conversation) {
         return (
             <div className="flex flex-1 items-center justify-center">
@@ -92,6 +100,10 @@ export default function ChatPage() {
                 currentUserId={meData._id as Id<"users">}
             />
 
+            {/* AI Blocks — rendered between header and messages */}
+            {summary && <AISummaryCard artifact={summary} />}
+            {actionItems && <ActionItemsPanel artifact={actionItems} />}
+
             <MessageList
                 conversationId={conversationId as Id<"conversations">}
                 currentUserId={meData._id as Id<"users">}
@@ -100,6 +112,7 @@ export default function ChatPage() {
             <MessageInput
                 conversationId={conversationId as Id<"conversations">}
                 currentUserId={meData._id as Id<"users">}
+                smartReplies={smartReplies}
             />
         </div>
     );
