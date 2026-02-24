@@ -19,17 +19,20 @@ A real-time chat application built with Next.js, Convex, and Clerk. Kliq support
 - **Online Presence** — Green dot shows which users are currently active
 - **Message Deletion** — Soft-delete your own messages
 - **Unread Counts** — Badge on each conversation showing unread messages
-- **Info Panel** — Slide-in sheet showing DM partner details or group member list
+- **Info Panel** — Slide-in sheet showing DM partner details or group member list; also hosts dismissed AI cards (summary & action items) in a collapsible AI Insights section
+- **Jump-to-bottom Button** — WhatsApp-style chevron button fixed to the bottom-right of the message list; appears when scrolled away from the latest messages and shows an unread-count badge
+- **Splash Screen** — Animated logo shown during initial app load and route transitions
 - **Mobile Responsive** — Full-width sidebar on mobile with smooth slide animation when opening a chat
 - **Dark Theme** — Consistent dark theme across the app and all Clerk modals
 
 ### AI Conversation Intelligence
 - **Slash Command Palette** — Type `/` in the message input to open a keyboard-navigable command palette (↑ ↓ Enter, Tab to pre-fill, Esc to close). Commands are never sent as chat messages.
 - **`/summarize`** — Generates a collapsible AI summary card (violet) between the header and messages. Cached per user with a 15-minute cooldown.
-- **`/action-items`** — Extracts tasks and decisions into a checkable amber action-items panel. Also cached with a 15-minute cooldown.
+- **`/action-items`** — Extracts tasks and decisions into a checkable amber action-items panel. No cooldown — always regenerates fresh on each invocation.
 - **`/reply`** — Suggests 3 contextual reply chips (sky blue) above the input, based on the *other* person's most recent messages. No cooldown — always regenerates fresh on each invocation.
 - **Per-user privacy** — All AI artifacts are scoped to the user who triggered the command. User A's summary is never visible to User B.
-- **Skeleton loading** — The summary card, action-items panel, and reply chips all show animated skeleton placeholders immediately after a command is triggered, while the AI is processing. Re-triggering `/reply` skeleton-loads over stale chips.
+- **Skeleton loading** — The summary card, action-items panel, and reply chips all show animated skeleton placeholders immediately after a command is triggered, while the AI is processing. Re-triggering any command skeleton-loads over stale content.
+- **Dismiss to Info Panel** — Each AI card (summary and action items) has an × dismiss button. Dismissed cards are removed from the chat area and placed in the collapsible **AI Insights** section inside the info panel (ℹ). Re-triggering the slash command restores the card inline instantly.
 - **Message Embeddings** — Every sent message is embedded asynchronously using `text-embedding-004` (768 dimensions) and stored in a Convex native vector index, powering semantic search.
 - **Semantic Search** — `semanticSearch` action embeds a query and retrieves the most relevant messages by cosine similarity via the vector index.
 
@@ -61,6 +64,7 @@ kliq/
 +-- app/                              # Next.js App Router
 |   +-- globals.css                   # Global styles, CSS variables, animations
 |   +-- layout.tsx                    # Root HTML layout
+|   +-- loading.tsx                   # Root Suspense fallback (animated logo splash)
 |   +-- (auth)/                       # Auth route group (no sidebar)
 |   |   +-- sign-in/[[...sign-in]]/page.tsx
 |   |   +-- sign-up/[[...sign-up]]/page.tsx
